@@ -1,10 +1,9 @@
 """
 Training callbacks: early stopping, checkpointing, logging.
 """
+
 import logging
 from pathlib import Path
-
-import torch
 
 logger = logging.getLogger(__name__)
 

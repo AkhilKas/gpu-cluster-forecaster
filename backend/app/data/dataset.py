@@ -2,11 +2,10 @@
 PyTorch Dataset and DataLoader creation for GPU forecast training.
 """
 import logging
-from typing import Dict, Tuple
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from app.config import TrainConfig
 
@@ -18,44 +17,46 @@ class GPUForecastDataset(Dataset):
     PyTorch Dataset wrapping windowed time series arrays.
 
     Args:
-        X: Input sequences (num_samples, seq_len, num_features)
-        y: Target sequences (num_samples, forecast_horizon, num_targets)
+        x_data: Input sequences (num_samples, seq_len, num_features)
+        y_data: Target sequences (num_samples, forecast_horizon, num_targets)
     """
 
-    def __init__(self, X: np.ndarray, y: np.ndarray):
-        assert len(X) == len(y), f"X/y length mismatch: {len(X)} vs {len(y)}"
-        self.X = torch.FloatTensor(X)
-        self.y = torch.FloatTensor(y)
+    def __init__(self, x_data: np.ndarray, y_data: np.ndarray):
+        assert len(x_data) == len(y_data), (
+            f"X/y length mismatch: {len(x_data)} vs {len(y_data)}"
+        )
+        self.x_data = torch.FloatTensor(x_data)
+        self.y_data = torch.FloatTensor(y_data)
 
     def __len__(self) -> int:
-        return len(self.X)
+        return len(self.x_data)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        return self.X[idx], self.y[idx]
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.x_data[idx], self.y_data[idx]
 
     @property
     def input_dim(self) -> int:
         """Number of input features."""
-        return self.X.shape[-1]
+        return self.x_data.shape[-1]
 
     @property
     def output_dim(self) -> int:
         """Number of target features."""
-        return self.y.shape[-1]
+        return self.y_data.shape[-1]
 
     @property
     def seq_len(self) -> int:
-        return self.X.shape[1]
+        return self.x_data.shape[1]
 
     @property
     def horizon(self) -> int:
-        return self.y.shape[1]
+        return self.y_data.shape[1]
 
 
 def create_dataloaders(
     splits: dict,
-    train_config: TrainConfig = None,
-) -> Dict[str, DataLoader]:
+    train_config: TrainConfig | None = None,
+) -> dict[str, DataLoader]:
     """
     Create PyTorch DataLoaders from preprocessed splits.
 
@@ -110,10 +111,10 @@ def create_dataloaders(
     }
 
     logger.info(
-        f"DataLoaders ready → "
+        f"DataLoaders ready -> "
         f"train: {len(train_ds)} samples ({len(loaders['train'])} batches), "
         f"val: {len(val_ds)}, test: {len(test_ds)} | "
         f"input_dim={train_ds.input_dim}, output_dim={train_ds.output_dim}, "
-        f"seq={train_ds.seq_len}→{train_ds.horizon}"
+        f"seq={train_ds.seq_len}->{train_ds.horizon}"
     )
     return loaders

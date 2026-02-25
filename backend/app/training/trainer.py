@@ -1,17 +1,18 @@
 """
 Training loop with logging, early stopping, and checkpointing.
 """
+
 import logging
 import time
-from typing import Dict, Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from app.config import TrainConfig, WEIGHTS_DIR
+from app.config import WEIGHTS_DIR, TrainConfig
 from app.models.base import BaseForecaster
+
 from .callbacks import EarlyStopping, ModelCheckpoint
 from .evaluator import Evaluator
 
@@ -31,8 +32,8 @@ class Trainer:
     def __init__(
         self,
         model: BaseForecaster,
-        config: TrainConfig = None,
-        device: str = None,
+        config: TrainConfig | None = None,
+        device: str | None = None,
     ):
         self.config = config or TrainConfig()
         self.device = self._resolve_device(device or self.config.device)
@@ -46,7 +47,10 @@ class Trainer:
             weight_decay=1e-5,
         )
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode="min", factor=0.5, patience=5, 
+            self.optimizer,
+            mode="min",
+            factor=0.5,
+            patience=5,
         )
 
         # Callbacks
@@ -76,12 +80,12 @@ class Trainer:
         self.model.train()
         total_loss = 0.0
 
-        for X_batch, y_batch in loader:
-            X_batch = X_batch.to(self.device)
+        for x_batch, y_batch in loader:
+            x_batch = x_batch.to(self.device)
             y_batch = y_batch.to(self.device)
 
             self.optimizer.zero_grad()
-            predictions = self.model(X_batch)
+            predictions = self.model(x_batch)
             loss = self.criterion(predictions, y_batch)
             loss.backward()
 
@@ -89,7 +93,7 @@ class Trainer:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
 
             self.optimizer.step()
-            total_loss += loss.item() * len(X_batch)
+            total_loss += loss.item() * len(x_batch)
 
         return total_loss / len(loader.dataset)
 
@@ -99,13 +103,13 @@ class Trainer:
         self.model.eval()
         total_loss = 0.0
 
-        for X_batch, y_batch in loader:
-            X_batch = X_batch.to(self.device)
+        for x_batch, y_batch in loader:
+            x_batch = x_batch.to(self.device)
             y_batch = y_batch.to(self.device)
 
-            predictions = self.model(X_batch)
+            predictions = self.model(x_batch)
             loss = self.criterion(predictions, y_batch)
-            total_loss += loss.item() * len(X_batch)
+            total_loss += loss.item() * len(x_batch)
 
         return total_loss / len(loader.dataset)
 
@@ -113,7 +117,7 @@ class Trainer:
         self,
         train_loader: DataLoader,
         val_loader: DataLoader,
-        epochs: int = None,
+        epochs: int | None = None,
     ) -> dict:
         """
         Full training loop.
@@ -148,10 +152,10 @@ class Trainer:
             # Logging
             if epoch % 5 == 0 or epoch <= 3:
                 logger.info(
-                    f"Epoch {epoch:3d}/{epochs} │ "
-                    f"train_loss: {train_loss:.6f} │ "
-                    f"val_loss: {val_loss:.6f} │ "
-                    f"lr: {current_lr:.2e} │ "
+                    f"Epoch {epoch:3d}/{epochs} | "
+                    f"train_loss: {train_loss:.6f} | "
+                    f"val_loss: {val_loss:.6f} | "
+                    f"lr: {current_lr:.2e} | "
                     f"time: {epoch_time:.1f}s"
                 )
 
@@ -177,7 +181,7 @@ class Trainer:
     def evaluate(
         self,
         test_loader: DataLoader,
-        target_names: list = None,
+        target_names: list | None = None,
     ) -> dict:
         """
         Run full evaluation on test set.
@@ -189,9 +193,9 @@ class Trainer:
         all_preds = []
         all_targets = []
 
-        for X_batch, y_batch in test_loader:
-            X_batch = X_batch.to(self.device)
-            preds = self.model(X_batch).cpu().numpy()
+        for x_batch, y_batch in test_loader:
+            x_batch = x_batch.to(self.device)
+            preds = self.model(x_batch).cpu().numpy()
             all_preds.append(preds)
             all_targets.append(y_batch.numpy())
 
@@ -201,8 +205,8 @@ class Trainer:
         return Evaluator.evaluate_all(y_true, y_pred, target_names)
 
     @torch.no_grad()
-    def predict(self, X: torch.Tensor) -> np.ndarray:
+    def predict(self, x_input: torch.Tensor) -> np.ndarray:
         """Run inference on raw input tensor."""
         self.model.eval()
-        X = X.to(self.device)
-        return self.model(X).cpu().numpy()
+        x_input = x_input.to(self.device)
+        return self.model(x_input).cpu().numpy()

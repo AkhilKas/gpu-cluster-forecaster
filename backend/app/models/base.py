@@ -2,6 +2,7 @@
 Abstract base class for all forecasting models.
 Ensures consistent interface across LSTM, Transformer, etc.
 """
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -12,9 +13,9 @@ import torch.nn as nn
 class BaseForecaster(ABC, nn.Module):
     """
     All forecasters must implement:
-        - forward(x) → predictions
-        - predict(x) → numpy predictions (no grad)
-        - model_name → string identifier
+        - forward(x) -> predictions
+        - predict(x) -> numpy predictions (no grad)
+        - model_name -> string identifier
     """
 
     def __init__(self):
@@ -46,11 +47,14 @@ class BaseForecaster(ABC, nn.Module):
 
     def save(self, path: Path):
         """Save model weights + config."""
-        torch.save({
-            "model_state_dict": self.state_dict(),
-            "model_name": self.model_name,
-            "config": self._get_config(),
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.state_dict(),
+                "model_name": self.model_name,
+                "config": self._get_config(),
+            },
+            path,
+        )
 
     def load(self, path: Path, device: str = "cpu"):
         """Load model weights."""

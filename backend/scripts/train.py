@@ -8,6 +8,7 @@ Usage:
     python scripts/train.py --model seq2seq             # Encoder-decoder LSTM
     python scripts/train.py --model baseline            # Linear baseline
 """
+
 import argparse
 import json
 import logging
@@ -18,12 +19,12 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import DataConfig, TrainConfig, DATA_PROCESSED, WEIGHTS_DIR
+from app.config import DATA_PROCESSED, WEIGHTS_DIR, DataConfig, TrainConfig
+from app.data.dataset import create_dataloaders
 from app.data.loader import ClusterDataLoader
 from app.data.preprocessor import Preprocessor
-from app.data.dataset import create_dataloaders
-from app.models.lstm import LSTMForecaster, LSTMSeq2Seq
 from app.models.baseline import LinearBaseline, MovingAverageBaseline
+from app.models.lstm import LSTMForecaster, LSTMSeq2Seq
 from app.training.trainer import Trainer
 from app.utils.logger import setup_logging
 
@@ -65,7 +66,9 @@ def build_model(name: str, meta: dict, config: TrainConfig):
         raise ValueError(f"Unknown model: {name}. Choose from: {list(models.keys())}")
 
     model = models[name]()
-    logger.info(f"Built {model.model_name} with {model.count_parameters():,} parameters")
+    logger.info(
+        f"Built {model.model_name} with {model.count_parameters():,} parameters"
+    )
     return model
 
 
@@ -113,15 +116,23 @@ def load_or_create_data(args, data_config):
 
 def main():
     parser = argparse.ArgumentParser(description="Train GPU forecast model")
-    parser.add_argument("--model", default="lstm", choices=["lstm", "seq2seq", "linear", "moving_avg"])
+    parser.add_argument(
+        "--model",
+        default="lstm",
+        choices=["lstm", "seq2seq", "linear", "moving_avg"],
+    )
     parser.add_argument("--data", default="synthetic", choices=["synthetic", "real"])
-    parser.add_argument("--gpu", type=int, default=0, help="Machine/GPU index to train on")
+    parser.add_argument(
+        "--gpu", type=int, default=0, help="Machine/GPU index to train on"
+    )
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--hidden", type=int, default=128)
     parser.add_argument("--layers", type=int, default=2)
-    parser.add_argument("--fresh", action="store_true", help="Regenerate data even if cached")
+    parser.add_argument(
+        "--fresh", action="store_true", help="Regenerate data even if cached"
+    )
     args = parser.parse_args()
 
     setup_logging("INFO")
@@ -145,7 +156,7 @@ def main():
 
     # Train
     trainer = Trainer(model, train_config)
-    history = trainer.train(loaders["train"], loaders["val"])
+    trainer.train(loaders["train"], loaders["val"])
 
     # Evaluate on test set
     logger.info("=" * 60)
@@ -175,7 +186,7 @@ def main():
 
     print("\n  Per-horizon MAE:")
     for h in metrics["per_horizon"]:
-        bar = "█" * int(h["mae"] * 100)
+        bar = "#" * int(h["mae"] * 100)
         print(f"    Step {h['step']:2d} (+{h['step']*5:2d}min): {h['mae']:.4f}  {bar}")
 
     # Save metrics

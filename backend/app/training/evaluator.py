@@ -2,11 +2,10 @@
 Evaluation metrics for time series forecasting.
 Computes both regression metrics and operational metrics.
 """
+
 import logging
-from typing import Dict
 
 import numpy as np
-import torch
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ class Evaluator:
         y_true: np.ndarray,
         y_pred: np.ndarray,
         threshold: float = 0.8,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Accuracy of predicting overload events (utilization > threshold).
 
@@ -90,11 +89,13 @@ class Evaluator:
         for t in range(horizon):
             yt = y_true[:, t, :]
             yp = y_pred[:, t, :]
-            results.append({
-                "step": t + 1,
-                "mae": round(float(np.mean(np.abs(yt - yp))), 4),
-                "rmse": round(float(np.sqrt(np.mean((yt - yp) ** 2))), 4),
-            })
+            results.append(
+                {
+                    "step": t + 1,
+                    "mae": round(float(np.mean(np.abs(yt - yp))), 4),
+                    "rmse": round(float(np.sqrt(np.mean((yt - yp) ** 2))), 4),
+                }
+            )
         return results
 
     @classmethod
@@ -102,7 +103,7 @@ class Evaluator:
         cls,
         y_true: np.ndarray,
         y_pred: np.ndarray,
-        target_names: list = None,
+        target_names: list | None = None,
     ) -> dict:
         """
         Run full evaluation suite.
@@ -146,7 +147,7 @@ class Evaluator:
 
         # Log summary
         logger.info(
-            f"Evaluation → MAE: {results['overall']['mae']:.4f}, "
+            f"Evaluation -> MAE: {results['overall']['mae']:.4f}, "
             f"RMSE: {results['overall']['rmse']:.4f}, "
             f"MAPE: {results['overall']['mape']:.2f}%"
         )

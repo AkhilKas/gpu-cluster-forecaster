@@ -1,6 +1,6 @@
 from .base import BaseForecaster
-from .lstm import LSTMForecaster
 from .baseline import LinearBaseline, MovingAverageBaseline
+from .lstm import LSTMForecaster
 
 __all__ = [
     "BaseForecaster",

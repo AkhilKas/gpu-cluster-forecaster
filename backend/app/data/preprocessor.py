@@ -5,13 +5,12 @@ for model training.
 import logging
 import pickle
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
-from app.config import DataConfig, DATA_PROCESSED
+from app.config import DATA_PROCESSED, DataConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +23,13 @@ class Preprocessor:
         1. Resample to fixed interval (5 min)
         2. Forward-fill gaps, drop remaining NaN
         3. Normalize features with MinMaxScaler (fit on train only)
-        4. Create sliding windows (X, y) pairs
+        4. Create sliding windows (x, y) pairs
         5. Chronological train/val/test split
     """
 
-    def __init__(self, config: DataConfig = None):
+    def __init__(self, config: DataConfig | None = None):
         self.config = config or DataConfig()
-        self.scalers: Dict[str, MinMaxScaler] = {}  # per-machine scalers
+        self.scalers: dict[str, MinMaxScaler] = {}  # per-machine scalers
         self._is_fitted = False
 
     def resample(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -51,7 +50,7 @@ class Preprocessor:
         df_resampled = df_resampled.dropna()
 
         logger.debug(
-            f"Resampled: {len(df)} → {len(df_resampled)} rows "
+            f"Resampled: {len(df)} -> {len(df_resampled)} rows "
             f"({self.config.resample_interval} intervals)"
         )
         return df_resampled.reset_index()
@@ -95,9 +94,9 @@ class Preprocessor:
     def create_windows(
         self,
         data: np.ndarray,
-        feature_indices: List[int],
-        target_indices: List[int],
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        feature_indices: list[int],
+        target_indices: list[int],
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Create sliding window sequences for time series forecasting.
 
@@ -107,8 +106,8 @@ class Preprocessor:
             target_indices: Column indices to predict
 
         Returns:
-            X: (num_windows, seq_len, num_features)
-            y: (num_windows, forecast_horizon, num_targets)
+            x_windows: (num_windows, seq_len, num_features)
+            y_windows: (num_windows, forecast_horizon, num_targets)
         """
         seq_len = self.config.sequence_length
         horizon = self.config.forecast_horizon
@@ -121,20 +120,20 @@ class Preprocessor:
             )
 
         n_windows = len(data) - total_len + 1
-        X = np.zeros((n_windows, seq_len, len(feature_indices)))
-        y = np.zeros((n_windows, horizon, len(target_indices)))
+        x_windows = np.zeros((n_windows, seq_len, len(feature_indices)))
+        y_windows = np.zeros((n_windows, horizon, len(target_indices)))
 
         for i in range(n_windows):
-            X[i] = data[i : i + seq_len][:, feature_indices]
-            y[i] = data[i + seq_len : i + total_len][:, target_indices]
+            x_windows[i] = data[i : i + seq_len][:, feature_indices]
+            y_windows[i] = data[i + seq_len : i + total_len][:, target_indices]
 
-        logger.debug(f"Windows created: X={X.shape}, y={y.shape}")
-        return X, y
+        logger.debug(f"Windows created: X={x_windows.shape}, y={y_windows.shape}")
+        return x_windows, y_windows
 
     def split_chronological(
         self,
-        X: np.ndarray,
-        y: np.ndarray,
+        x_data: np.ndarray,
+        y_data: np.ndarray,
     ) -> dict:
         """
         Split data chronologically (NEVER shuffle time series).
@@ -142,21 +141,21 @@ class Preprocessor:
         Returns:
             dict with keys: X_train, y_train, X_val, y_val, X_test, y_test
         """
-        n = len(X)
+        n = len(x_data)
         train_end = int(n * self.config.train_ratio)
         val_end = train_end + int(n * self.config.val_ratio)
 
         splits = {
-            "X_train": X[:train_end],
-            "y_train": y[:train_end],
-            "X_val": X[train_end:val_end],
-            "y_val": y[train_end:val_end],
-            "X_test": X[val_end:],
-            "y_test": y[val_end:],
+            "X_train": x_data[:train_end],
+            "y_train": y_data[:train_end],
+            "X_val": x_data[train_end:val_end],
+            "y_val": y_data[train_end:val_end],
+            "X_test": x_data[val_end:],
+            "y_test": y_data[val_end:],
         }
 
         logger.info(
-            f"Split sizes → train: {len(splits['X_train'])}, "
+            f"Split sizes -> train: {len(splits['X_train'])}, "
             f"val: {len(splits['X_val'])}, test: {len(splits['X_test'])}"
         )
         return splits
@@ -167,7 +166,7 @@ class Preprocessor:
         machine_id: str,
     ) -> dict:
         """
-        Full pipeline for a single machine: resample → normalize → window → split.
+        Full pipeline for a single machine: resample -> normalize -> window -> split.
 
         Returns:
             dict with train/val/test arrays ready for PyTorch DataLoader
@@ -205,10 +204,12 @@ class Preprocessor:
         feature_indices = [all_cols.index(c) for c in feature_cols]
         target_indices = [all_cols.index(c) for c in target_cols]
 
-        X, y = self.create_windows(normalized, feature_indices, target_indices)
+        x_data, y_data = self.create_windows(
+            normalized, feature_indices, target_indices
+        )
 
         # Step 5: Chronological split
-        splits = self.split_chronological(X, y)
+        splits = self.split_chronological(x_data, y_data)
         splits["feature_columns"] = feature_cols
         splits["target_columns"] = target_cols
         splits["machine_id"] = machine_id
@@ -217,8 +218,8 @@ class Preprocessor:
 
     def process_all_machines(
         self,
-        machines: Dict[str, pd.DataFrame],
-    ) -> Dict[str, dict]:
+        machines: dict[str, pd.DataFrame],
+    ) -> dict[str, dict]:
         """Process all machines and return dict of splits."""
         results = {}
         for mid, df in machines.items():
@@ -232,7 +233,7 @@ class Preprocessor:
         self,
         data: np.ndarray,
         machine_id: str,
-        columns: List[str],
+        columns: list[str],
     ) -> np.ndarray:
         """
         Reverse normalization for predictions back to original scale.
@@ -243,7 +244,6 @@ class Preprocessor:
 
         scaler = self.scalers[machine_id]
         # Build a dummy full-feature array to inverse transform target columns
-        feature_cols = [c for c in self.config.feature_columns if True]
         n_features = len(scaler.scale_)
         dummy = np.zeros((len(data), n_features))
 
@@ -259,14 +259,14 @@ class Preprocessor:
         result_indices = [all_cols.index(c) for c in columns if c in all_cols]
         return inversed[:, result_indices]
 
-    def save_scalers(self, path: Path = None):
+    def save_scalers(self, path: Path | None = None):
         """Save fitted scalers for inference."""
         path = path or DATA_PROCESSED / "scalers.pkl"
         with open(path, "wb") as f:
             pickle.dump(self.scalers, f)
         logger.info(f"Scalers saved to {path}")
 
-    def load_scalers(self, path: Path = None):
+    def load_scalers(self, path: Path | None = None):
         """Load scalers for inference."""
         path = path or DATA_PROCESSED / "scalers.pkl"
         with open(path, "rb") as f:

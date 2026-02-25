@@ -12,14 +12,15 @@ We download a configurable number of shards to keep things manageable.
 
 Docs: https://github.com/google/cluster-data/blob/master/ClusterData2019.md
 """
-import logging
-import urllib.request
-import gzip
-import shutil
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from app.config import DataConfig, DATA_RAW
+import gzip
+import logging
+import shutil
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+from app.config import DATA_RAW, DataConfig
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ GCS_BASE_URL = "https://storage.googleapis.com/clusterdata_2019_a"
 class GoogleClusterDownloader:
     """Downloads and extracts Google Cluster Data 2019 shards."""
 
-    def __init__(self, config: DataConfig = None):
+    def __init__(self, config: DataConfig | None = None):
         self.config = config or DataConfig()
         self.raw_dir = DATA_RAW / "google_cluster_2019"
         self.raw_dir.mkdir(parents=True, exist_ok=True)
@@ -39,7 +40,7 @@ class GoogleClusterDownloader:
         # Files are named like: instance_usage-000000000000.csv.gz
         return f"{GCS_BASE_URL}/{table}/{table}-{shard_idx:012d}.csv.gz"
 
-    def _download_shard(self, table: str, shard_idx: int) -> Path:
+    def _download_shard(self, table: str, shard_idx: int) -> Path | None:
         """Download a single shard if not already cached."""
         table_dir = self.raw_dir / table
         table_dir.mkdir(exist_ok=True)
@@ -59,9 +60,8 @@ class GoogleClusterDownloader:
             urllib.request.urlretrieve(url, gz_path)
 
             # Decompress
-            with gzip.open(gz_path, "rb") as f_in:
-                with open(csv_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with gzip.open(gz_path, "rb") as f_in, open(csv_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
             gz_path.unlink()  # Remove .gz after extraction
             logger.info(f"Extracted: {csv_path.name}")
@@ -75,12 +75,14 @@ class GoogleClusterDownloader:
                     p.unlink()
             return None
 
-    def download(self, tables: list = None, max_shards: int = None) -> dict:
+    def download(
+        self, tables: list | None = None, max_shards: int | None = None
+    ) -> dict:
         """
         Download multiple shards for specified tables.
 
         Returns:
-            dict mapping table name → list of downloaded CSV paths
+            dict mapping table name -> list of downloaded CSV paths
         """
         tables = tables or self.config.tables
         max_shards = max_shards or self.config.max_shards_per_table
@@ -102,11 +104,11 @@ class GoogleClusterDownloader:
 
             paths.sort()
             downloaded[table] = paths
-            logger.info(f"  → {len(paths)} shards downloaded for '{table}'")
+            logger.info(f"  -> {len(paths)} shards downloaded for '{table}'")
 
         return downloaded
 
-    def download_instance_usage(self, max_shards: int = None) -> list:
+    def download_instance_usage(self, max_shards: int | None = None) -> list:
         """Convenience: download only instance_usage (the main table we need)."""
         result = self.download(
             tables=["instance_usage"],

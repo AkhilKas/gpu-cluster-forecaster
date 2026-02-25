@@ -1,5 +1,5 @@
-from .trainer import Trainer
-from .evaluator import Evaluator
 from .callbacks import EarlyStopping, ModelCheckpoint
+from .evaluator import Evaluator
+from .trainer import Trainer
 
-__all__ = ["Trainer", "Evaluator", "EarlyStopping", "ModelCheckpoint"]
+__all__ = ["EarlyStopping", "Evaluator", "ModelCheckpoint", "Trainer"]

@@ -2,11 +2,12 @@
 LSTM Forecaster for GPU utilization prediction.
 
 Architecture:
-    Input → LSTM (2-layer, 128 hidden) → Dropout → FC → Output
+    Input -> LSTM (2-layer, 128 hidden) -> Dropout -> FC -> Output
 
     Input:  (batch, seq_len=60, input_dim=4)
     Output: (batch, horizon=12, output_dim=2)
 """
+
 import torch
 import torch.nn as nn
 
@@ -58,8 +59,8 @@ class LSTMForecaster(BaseForecaster):
         # Dropout before projection
         self.dropout = nn.Dropout(dropout)
 
-        # Project last hidden state → full forecast horizon
-        # Output shape: (batch, horizon * output_dim) → reshaped to (batch, horizon, output_dim)
+        # Project last hidden state -> full forecast horizon
+        # Output shape: (batch, horizon * output_dim) -> reshaped
         self.fc = nn.Sequential(
             nn.Linear(lstm_output_size, hidden_size),
             nn.ReLU(),
@@ -80,17 +81,17 @@ class LSTMForecaster(BaseForecaster):
             (batch, horizon, output_dim)
         """
         # LSTM encoding
-        lstm_out, (h_n, c_n) = self.lstm(x)
+        lstm_out, (_h_n, _c_n) = self.lstm(x)
 
         # Use the last timestep output (captures full sequence context)
-        last_out = lstm_out[:, -1, :]           # (batch, hidden * directions)
+        last_out = lstm_out[:, -1, :]  # (batch, hidden * directions)
 
         # Normalize + dropout
         last_out = self.layer_norm(last_out)
         last_out = self.dropout(last_out)
 
         # Project to forecast
-        forecast = self.fc(last_out)            # (batch, horizon * output_dim)
+        forecast = self.fc(last_out)  # (batch, horizon * output_dim)
 
         # Reshape to (batch, horizon, output_dim)
         forecast = forecast.view(-1, self.horizon, self.output_dim)
@@ -152,7 +153,7 @@ class LSTMSeq2Seq(BaseForecaster):
         )
 
         self.output_proj = nn.Linear(hidden_size, output_dim)
-        self.dropout = nn.Dropout(dropout)
+        self.dropout_layer = nn.Dropout(dropout)
 
     @property
     def model_name(self) -> str:
@@ -171,14 +172,12 @@ class LSTMSeq2Seq(BaseForecaster):
         _, (h, c) = self.encoder(x)
 
         # Decoder: start with zeros, autoregressively generate
-        decoder_input = torch.zeros(
-            batch_size, 1, self.output_dim, device=x.device
-        )
+        decoder_input = torch.zeros(batch_size, 1, self.output_dim, device=x.device)
         outputs = []
 
-        for t in range(self.horizon):
+        for _t in range(self.horizon):
             decoder_out, (h, c) = self.decoder(decoder_input, (h, c))
-            pred = self.output_proj(self.dropout(decoder_out))
+            pred = self.output_proj(self.dropout_layer(decoder_out))
             outputs.append(pred)
             decoder_input = pred  # Feed prediction as next input
 

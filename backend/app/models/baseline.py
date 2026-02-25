@@ -2,6 +2,7 @@
 Baseline models for comparison.
 Every ML project needs baselines to prove the DL model adds value.
 """
+
 import torch
 import torch.nn as nn
 
@@ -32,7 +33,7 @@ class LinearBaseline(BaseForecaster):
 class MovingAverageBaseline(BaseForecaster):
     """
     Predicts future = mean of last N steps.
-    No trainable params — pure heuristic baseline.
+    No trainable params -- pure heuristic baseline.
     """
 
     def __init__(self, output_dim: int, horizon: int, window: int = 12):
@@ -49,5 +50,5 @@ class MovingAverageBaseline(BaseForecaster):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Average last `window` steps, repeat for entire horizon
-        avg = x[:, -self.window:, :self.output_dim].mean(dim=1, keepdim=True)
+        avg = x[:, -self.window :, : self.output_dim].mean(dim=1, keepdim=True)
         return avg.expand(-1, self.horizon, -1)

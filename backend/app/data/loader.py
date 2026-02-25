@@ -4,12 +4,11 @@ Load and parse Google Cluster Data into clean DataFrames.
 """
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 
-from app.config import DataConfig, DATA_RAW
+from app.config import DATA_RAW, DataConfig
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +26,13 @@ INSTANCE_USAGE_COLUMNS = [
 class ClusterDataLoader:
     """Load Google Cluster trace data into analysis-ready DataFrames."""
 
-    def __init__(self, config: DataConfig = None):
+    def __init__(self, config: DataConfig | None = None):
         self.config = config or DataConfig()
         self.raw_dir = DATA_RAW / "google_cluster_2019"
 
     def load_instance_usage(
         self,
-        csv_paths: List[Path] = None,
+        csv_paths: list[Path] | None = None,
         max_rows_per_shard: int = 500_000,
     ) -> pd.DataFrame:
         """
@@ -78,7 +77,7 @@ class ClusterDataLoader:
         df = pd.concat(frames, ignore_index=True)
         logger.info(f"Total rows loaded: {len(df):,}")
 
-        # ── Clean & transform ──
+        # Clean & transform
         df = self._clean_instance_usage(df)
         return df
 
@@ -96,7 +95,7 @@ class ClusterDataLoader:
             "max_memory": "max_memory_usage",
         })
 
-        # CPU/memory are normalized 0-1 in Google data → scale to percentage
+        # CPU/memory are normalized 0-1 in Google data -> scale to percentage
         for col in ["cpu_usage", "memory_usage", "max_cpu_usage", "max_memory_usage"]:
             if col in df.columns:
                 df[col] = (df[col] * 100).clip(0, 100)
@@ -118,20 +117,20 @@ class ClusterDataLoader:
         logger.info(
             f"Cleaned data: {len(df):,} rows, "
             f"{df['machine_id'].nunique()} unique machines, "
-            f"time range: {df['timestamp'].min()} → {df['timestamp'].max()}"
+            f"time range: {df['timestamp'].min()} -> {df['timestamp'].max()}"
         )
         return df
 
     def load_per_machine(
         self,
-        df: pd.DataFrame = None,
+        df: pd.DataFrame | None = None,
         top_n_machines: int = 8,
     ) -> dict:
         """
         Group data by machine and return top N most active machines.
 
         Returns:
-            dict mapping machine_id → DataFrame of that machine's time series
+            dict mapping machine_id -> DataFrame of that machine's time series
         """
         if df is None:
             df = self.load_instance_usage()
@@ -145,7 +144,7 @@ class ClusterDataLoader:
                 "max_cpu_usage": "max",
                 "max_memory_usage": "max",
                 "assigned_memory": "sum",
-                "collection_id": "nunique",  # → running_jobs_count
+                "collection_id": "nunique",  # -> running_jobs_count
             })
             .reset_index()
             .rename(columns={"collection_id": "running_jobs_count"})
@@ -176,13 +175,13 @@ class ClusterDataLoader:
         return result
 
     @staticmethod
-    def generate_synthetic(config: DataConfig = None) -> dict:
+    def generate_synthetic(config: DataConfig | None = None) -> dict:
         """
         Generate synthetic GPU-like telemetry for development/testing.
-        No download required — useful for building the pipeline first.
+        No download required -- useful for building the pipeline first.
 
         Returns:
-            dict mapping gpu_id → DataFrame
+            dict mapping gpu_id -> DataFrame
         """
         config = config or DataConfig()
         n_machines = config.synthetic_num_machines
@@ -190,7 +189,7 @@ class ClusterDataLoader:
         rng = np.random.default_rng(42)
 
         logger.info(
-            f"Generating synthetic data: {n_machines} GPUs × {n_steps} timesteps"
+            f"Generating synthetic data: {n_machines} GPUs x {n_steps} timesteps"
         )
 
         timestamps = pd.date_range(
@@ -241,8 +240,12 @@ class ClusterDataLoader:
                 "machine_id": gpu_id,
                 "cpu_usage": np.round(cpu_usage, 2),
                 "memory_usage": np.round(memory_usage, 2),
-                "max_cpu_usage": np.round(np.clip(cpu_usage + rng.uniform(5, 15, n_steps), 0, 100), 2),
-                "max_memory_usage": np.round(np.clip(memory_usage + rng.uniform(3, 10, n_steps), 0, 100), 2),
+                "max_cpu_usage": np.round(
+                    np.clip(cpu_usage + rng.uniform(5, 15, n_steps), 0, 100), 2
+                ),
+                "max_memory_usage": np.round(
+                    np.clip(memory_usage + rng.uniform(3, 10, n_steps), 0, 100), 2
+                ),
                 "temperature": np.round(temperature, 1),
                 "power_draw": np.round(power_draw, 1),
                 "running_jobs_count": jobs_count,
