@@ -1,9 +1,16 @@
 /**
  * Thin fetch wrapper around the FastAPI backend.
- * Reads base URL from VITE_API_BASE_URL (default: http://localhost:8000).
+ *
+ * BASE_URL resolution:
+ *   1. If VITE_API_BASE_URL is set (including empty string), use it.
+ *   2. Otherwise, in production builds → "" (relative, same-origin as the
+ *      served bundle — matches the unified Render deploy).
+ *   3. Otherwise, in dev → http://localhost:8000.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.PROD ? "" : "http://localhost:8000");
 
 export class ApiError extends Error {
   constructor(message, status, url) {

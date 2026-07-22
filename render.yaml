@@ -1,0 +1,11 @@
+# Render Blueprint — one-click deploy from this repo.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: gpu-cluster-forecaster
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    # Sleeps after 15 min idle on the free plan; first request wakes it back up.
+    autoDeploy: true
