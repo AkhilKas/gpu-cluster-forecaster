@@ -2,6 +2,7 @@
 Load and parse Google Cluster Data into clean DataFrames.
 
 """
+
 import logging
 from pathlib import Path
 
@@ -14,11 +15,21 @@ logger = logging.getLogger(__name__)
 
 # Column names for instance_usage (no header in raw CSVs)
 INSTANCE_USAGE_COLUMNS = [
-    "start_time", "end_time", "collection_id", "instance_index",
-    "machine_id", "alloc_collection_id",
-    "avg_cpu", "avg_memory", "max_cpu", "max_memory",
-    "sample_cpu", "sample_memory", "assigned_memory",
-    "cycles_per_instruction", "memory_accesses_per_instruction",
+    "start_time",
+    "end_time",
+    "collection_id",
+    "instance_index",
+    "machine_id",
+    "alloc_collection_id",
+    "avg_cpu",
+    "avg_memory",
+    "max_cpu",
+    "max_memory",
+    "sample_cpu",
+    "sample_memory",
+    "assigned_memory",
+    "cycles_per_instruction",
+    "memory_accesses_per_instruction",
     "sample_rate",
 ]
 
@@ -88,12 +99,14 @@ class ClusterDataLoader:
         df["timestamp"] = pd.to_datetime(df["start_time"], unit="us")
 
         # Rename to project-standard column names
-        df = df.rename(columns={
-            "avg_cpu": "cpu_usage",
-            "avg_memory": "memory_usage",
-            "max_cpu": "max_cpu_usage",
-            "max_memory": "max_memory_usage",
-        })
+        df = df.rename(
+            columns={
+                "avg_cpu": "cpu_usage",
+                "avg_memory": "memory_usage",
+                "max_cpu": "max_cpu_usage",
+                "max_memory": "max_memory_usage",
+            }
+        )
 
         # CPU/memory are normalized 0-1 in Google data -> scale to percentage
         for col in ["cpu_usage", "memory_usage", "max_cpu_usage", "max_memory_usage"]:
@@ -105,9 +118,15 @@ class ClusterDataLoader:
 
         # Keep only columns we need
         keep_cols = [
-            "timestamp", "machine_id", "collection_id",
-            "cpu_usage", "memory_usage", "max_cpu_usage", "max_memory_usage",
-            "assigned_memory", "cycles_per_instruction",
+            "timestamp",
+            "machine_id",
+            "collection_id",
+            "cpu_usage",
+            "memory_usage",
+            "max_cpu_usage",
+            "max_memory_usage",
+            "assigned_memory",
+            "cycles_per_instruction",
         ]
         df = df[[c for c in keep_cols if c in df.columns]]
 
@@ -138,14 +157,16 @@ class ClusterDataLoader:
         # Aggregate all instances on a machine at each timestamp
         machine_df = (
             df.groupby(["timestamp", "machine_id"])
-            .agg({
-                "cpu_usage": "sum",
-                "memory_usage": "sum",
-                "max_cpu_usage": "max",
-                "max_memory_usage": "max",
-                "assigned_memory": "sum",
-                "collection_id": "nunique",  # -> running_jobs_count
-            })
+            .agg(
+                {
+                    "cpu_usage": "sum",
+                    "memory_usage": "sum",
+                    "max_cpu_usage": "max",
+                    "max_memory_usage": "max",
+                    "assigned_memory": "sum",
+                    "collection_id": "nunique",  # -> running_jobs_count
+                }
+            )
             .reset_index()
             .rename(columns={"collection_id": "running_jobs_count"})
         )
@@ -156,10 +177,7 @@ class ClusterDataLoader:
 
         # Select top N machines by data volume
         top_machines = (
-            machine_df["machine_id"]
-            .value_counts()
-            .head(top_n_machines)
-            .index.tolist()
+            machine_df["machine_id"].value_counts().head(top_n_machines).index.tolist()
         )
 
         result = {}
@@ -213,18 +231,19 @@ class ClusterDataLoader:
                 start = rng.integers(0, n_steps - 100)
                 duration = rng.integers(20, 100)
                 intensity = rng.uniform(15, 40)
-                spikes[start:start + duration] += intensity
+                spikes[start : start + duration] += intensity
 
             cpu_usage = np.clip(
-                base_util + daily_cycle + trend + spikes
-                + rng.normal(0, 5, n_steps),
-                0, 100,
+                base_util + daily_cycle + trend + spikes + rng.normal(0, 5, n_steps),
+                0,
+                100,
             )
 
             # Memory correlates with CPU but is smoother
             memory_usage = np.clip(
                 cpu_usage * 0.7 + 15 + rng.normal(0, 3, n_steps),
-                0, 100,
+                0,
+                100,
             )
 
             # Simulated derived features
@@ -232,24 +251,27 @@ class ClusterDataLoader:
             power_draw = 80 + cpu_usage * 2.5 + rng.normal(0, 10, n_steps)
             jobs_count = np.clip(
                 (cpu_usage / 25).astype(int) + rng.integers(0, 2, n_steps),
-                0, 10,
+                0,
+                10,
             )
 
-            machines[gpu_id] = pd.DataFrame({
-                "timestamp": timestamps,
-                "machine_id": gpu_id,
-                "cpu_usage": np.round(cpu_usage, 2),
-                "memory_usage": np.round(memory_usage, 2),
-                "max_cpu_usage": np.round(
-                    np.clip(cpu_usage + rng.uniform(5, 15, n_steps), 0, 100), 2
-                ),
-                "max_memory_usage": np.round(
-                    np.clip(memory_usage + rng.uniform(3, 10, n_steps), 0, 100), 2
-                ),
-                "temperature": np.round(temperature, 1),
-                "power_draw": np.round(power_draw, 1),
-                "running_jobs_count": jobs_count,
-            })
+            machines[gpu_id] = pd.DataFrame(
+                {
+                    "timestamp": timestamps,
+                    "machine_id": gpu_id,
+                    "cpu_usage": np.round(cpu_usage, 2),
+                    "memory_usage": np.round(memory_usage, 2),
+                    "max_cpu_usage": np.round(
+                        np.clip(cpu_usage + rng.uniform(5, 15, n_steps), 0, 100), 2
+                    ),
+                    "max_memory_usage": np.round(
+                        np.clip(memory_usage + rng.uniform(3, 10, n_steps), 0, 100), 2
+                    ),
+                    "temperature": np.round(temperature, 1),
+                    "power_draw": np.round(power_draw, 1),
+                    "running_jobs_count": jobs_count,
+                }
+            )
 
         logger.info(f"Synthetic data ready: {n_machines} machines")
         return machines

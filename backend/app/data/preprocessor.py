@@ -2,6 +2,7 @@
 Preprocessor: resample, normalize, window, and split time series
 for model training.
 """
+
 import logging
 import pickle
 from pathlib import Path
@@ -30,7 +31,6 @@ class Preprocessor:
     def __init__(self, config: DataConfig | None = None):
         self.config = config or DataConfig()
         self.scalers: dict[str, MinMaxScaler] = {}  # per-machine scalers
-        self._is_fitted = False
 
     def resample(self, df: pd.DataFrame) -> pd.DataFrame:
         """Resample to fixed time intervals and interpolate gaps."""
@@ -54,42 +54,6 @@ class Preprocessor:
             f"({self.config.resample_interval} intervals)"
         )
         return df_resampled.reset_index()
-
-    def normalize(
-        self,
-        df: pd.DataFrame,
-        machine_id: str,
-        fit: bool = True,
-    ) -> pd.DataFrame:
-        """
-        Min-Max normalize feature columns to [0, 1].
-
-        Args:
-            fit: If True, fit scaler on this data (use for train set only).
-                 If False, use previously fitted scaler (for val/test).
-        """
-        feature_cols = [
-            c for c in self.config.feature_columns if c in df.columns
-        ]
-        if not feature_cols:
-            raise ValueError(
-                f"No feature columns found. Available: {df.columns.tolist()}"
-            )
-
-        if fit:
-            scaler = MinMaxScaler()
-            df[feature_cols] = scaler.fit_transform(df[feature_cols])
-            self.scalers[machine_id] = scaler
-            self._is_fitted = True
-        else:
-            if machine_id not in self.scalers:
-                raise RuntimeError(
-                    f"No fitted scaler for machine {machine_id}. "
-                    "Call normalize with fit=True on training data first."
-                )
-            df[feature_cols] = self.scalers[machine_id].transform(df[feature_cols])
-
-        return df
 
     def create_windows(
         self,
@@ -196,7 +160,6 @@ class Preprocessor:
         scaler = MinMaxScaler()
         scaler.fit(numeric_data[:train_end])
         self.scalers[machine_id] = scaler
-        self._is_fitted = True
 
         normalized = scaler.transform(numeric_data)
 
@@ -247,9 +210,9 @@ class Preprocessor:
         n_features = len(scaler.scale_)
         dummy = np.zeros((len(data), n_features))
 
-        all_cols = list(dict.fromkeys(
-            self.config.feature_columns + self.config.target_columns
-        ))
+        all_cols = list(
+            dict.fromkeys(self.config.feature_columns + self.config.target_columns)
+        )
         for i, col in enumerate(columns):
             if col in all_cols:
                 idx = all_cols.index(col)
@@ -271,5 +234,4 @@ class Preprocessor:
         path = path or DATA_PROCESSED / "scalers.pkl"
         with open(path, "rb") as f:
             self.scalers = pickle.load(f)
-        self._is_fitted = True
         logger.info(f"Scalers loaded from {path}")

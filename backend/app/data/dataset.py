@@ -1,6 +1,7 @@
 """
 PyTorch Dataset and DataLoader creation for GPU forecast training.
 """
+
 import logging
 
 import numpy as np
@@ -22,9 +23,9 @@ class GPUForecastDataset(Dataset):
     """
 
     def __init__(self, x_data: np.ndarray, y_data: np.ndarray):
-        assert len(x_data) == len(y_data), (
-            f"X/y length mismatch: {len(x_data)} vs {len(y_data)}"
-        )
+        assert len(x_data) == len(
+            y_data
+        ), f"X/y length mismatch: {len(x_data)} vs {len(y_data)}"
         self.x_data = torch.FloatTensor(x_data)
         self.y_data = torch.FloatTensor(y_data)
 
@@ -77,8 +78,8 @@ def create_dataloaders(
         "train": DataLoader(
             train_ds,
             batch_size=config.batch_size,
-            shuffle=True,           # OK to shuffle windows (not raw timesteps)
-            num_workers=0,           # Set >0 for faster loading on multi-core
+            shuffle=True,  # OK to shuffle windows (not raw timesteps)
+            num_workers=0,  # Set >0 for faster loading on multi-core
             pin_memory=True,
             drop_last=True,
         ),
