@@ -14,17 +14,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api.middleware import configure_cors, configure_error_handlers
 from app.api.routes import health as health_routes
 from app.api.routes import machines as machine_routes
 from app.api.routes import models as model_routes
 from app.api.routes import predict as predict_routes
-from app.config import DATA_PROCESSED, WEIGHTS_DIR, DataConfig
+from app.config import BACKEND_DIR, DATA_PROCESSED, WEIGHTS_DIR, DataConfig
 from app.inference import DataStore, ModelRegistry, Predictor
 from app.utils.logger import setup_logging
 
 logger = logging.getLogger(__name__)
+
+# frontend/dist sits next to backend/ at the repo root.
+FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"
 
 
 def create_app(
@@ -74,6 +78,18 @@ def create_app(
     app.include_router(model_routes.router)
     app.include_router(machine_routes.router)
     app.include_router(predict_routes.router)
+
+    # Serve the built frontend from the same origin when available.
+    # Registered last so API routes above take precedence.
+    if FRONTEND_DIST.exists():
+        app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+        logger.info(f"Serving frontend bundle from {FRONTEND_DIST}")
+    else:
+        logger.info(
+            f"No frontend build at {FRONTEND_DIST}; static mount skipped "
+            "(run `npm run build` in frontend/ to enable)."
+        )
+
     return app
 
 

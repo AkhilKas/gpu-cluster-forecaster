@@ -170,6 +170,35 @@ Once `make serve` is running:
 | POST   | `/predict`                          | `{window, model?}` → forecast                        |
 | POST   | `/predict/batch`                    | `{windows[], model?}` → forecasts                    |
 
+## Deploying to Render
+
+The whole stack — FastAPI backend, trained LSTM, and the built React dashboard — deploys to a single Render web service via the included `Dockerfile` and `render.yaml`. Backend and frontend share the same origin, so there's no CORS to configure.
+
+**One-time setup:**
+
+1. Sign in to [render.com](https://render.com) and connect your GitHub account.
+2. Click **New → Blueprint**, point it at this repo, pick a branch (usually `main`), and confirm. Render reads `render.yaml`, spins up the Docker build, and gives you a URL like `https://gpu-cluster-forecaster.onrender.com`.
+
+**What happens during the build (5-10 min on the free tier):**
+
+- Stage 1: `node:20-alpine` runs `npm ci` + `npm run build` — Vite bundles the React dashboard with `VITE_API_BASE_URL=""` (same-origin).
+- Stage 2: `python:3.11-slim` installs the CPU-only PyTorch wheel + the rest of `requirements.txt`, copies the built frontend into `frontend/dist/`, then runs `download_data.py --synthetic --process` and `train.py` to bake a trained LSTM + preprocessed splits + scalers into the image.
+- Startup: `uvicorn` binds to `$PORT`, FastAPI mounts `frontend/dist/` at `/`, and `/health` is Render's health check.
+
+**Free-tier caveats:**
+
+- The service sleeps after 15 min of inactivity. First request after sleep takes ~30 s to warm up.
+- 512 MB RAM. The LSTM at default size is small (~500 KB); the runtime is comfortably under the limit.
+- Every push to `main` auto-deploys. To change that, edit `autoDeploy: true` in `render.yaml`.
+
+**Local Docker test:**
+
+```bash
+docker build -t gpu-cluster-forecaster .
+docker run -p 8000:8000 gpu-cluster-forecaster
+# → http://localhost:8000 serves the dashboard, /docs shows the API
+```
+
 ## Contributing / development
 
 Common tasks are wired into `backend/Makefile`:
