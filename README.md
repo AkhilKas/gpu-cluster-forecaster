@@ -22,7 +22,7 @@ python scripts/download_data.py --shards 3 --process
 
 ## Project Status
 - [x] Data pipeline (download, preprocess, windowing)
-- [ ] LSTM model
+- [x] LSTM model (+ Seq2Seq variant, linear/moving-avg baselines, training loop, evaluator)
 - [ ] Transformer model
 - [ ] FastAPI backend
 - [ ] React dashboard
