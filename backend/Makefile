@@ -14,6 +14,10 @@ lint:
 test:
 	pytest tests/ -v --tb=short --cov=app --cov-report=term-missing
 
+# ── Serving ──
+serve:
+	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
 # ── Training ──
 train:
 	python scripts/train.py --model lstm --data synthetic --epochs 50

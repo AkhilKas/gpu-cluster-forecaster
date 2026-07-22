@@ -16,6 +16,7 @@ class LinearBaseline(BaseForecaster):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.seq_len = seq_len
         self.horizon = horizon
         self.fc = nn.Linear(seq_len * input_dim, horizon * output_dim)
 
@@ -28,6 +29,14 @@ class LinearBaseline(BaseForecaster):
         flat = x.view(batch, -1)
         out = self.fc(flat)
         return out.view(batch, self.horizon, self.output_dim)
+
+    def _get_config(self) -> dict:
+        return {
+            "input_dim": self.input_dim,
+            "output_dim": self.output_dim,
+            "seq_len": self.seq_len,
+            "horizon": self.horizon,
+        }
 
 
 class MovingAverageBaseline(BaseForecaster):
@@ -52,3 +61,10 @@ class MovingAverageBaseline(BaseForecaster):
         # Average last `window` steps, repeat for entire horizon
         avg = x[:, -self.window :, : self.output_dim].mean(dim=1, keepdim=True)
         return avg.expand(-1, self.horizon, -1)
+
+    def _get_config(self) -> dict:
+        return {
+            "output_dim": self.output_dim,
+            "horizon": self.horizon,
+            "window": self.window,
+        }

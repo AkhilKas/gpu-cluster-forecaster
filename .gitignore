@@ -19,7 +19,11 @@ data/processed/*
 backend/weights/*.pt
 backend/weights/*.pth
 backend/weights/*.onnx
+backend/weights/*_metrics.json
 !backend/weights/.gitkeep
+
+# Safety net: catch weights/ accidentally created at repo root
+/weights/
 
 # ── Environment ──
 .env
