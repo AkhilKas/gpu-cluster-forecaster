@@ -195,6 +195,12 @@ def main():
         json.dump(metrics, f, indent=2)
     logger.info(f"Metrics saved to {metrics_path}")
 
+    # Save training history for the API's model-performance endpoint
+    history_path = WEIGHTS_DIR / f"{model.model_name}_history.json"
+    with open(history_path, "w") as f:
+        json.dump(trainer.history, f, indent=2)
+    logger.info(f"Training history saved to {history_path}")
+
     print(f"\nModel saved to: {WEIGHTS_DIR / f'{model.model_name}_best.pt'}")
     print("=" * 60)
 

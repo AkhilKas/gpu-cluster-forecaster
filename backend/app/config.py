@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent  # backend/
-DATA_RAW = ROOT_DIR.parent / "data" / "raw"
-DATA_PROCESSED = ROOT_DIR.parent / "data" / "processed"
-WEIGHTS_DIR = ROOT_DIR / "weights"
+BACKEND_DIR = Path(__file__).resolve().parent.parent  # backend/
+REPO_ROOT = BACKEND_DIR.parent
+DATA_RAW = REPO_ROOT / "data" / "raw"
+DATA_PROCESSED = REPO_ROOT / "data" / "processed"
+WEIGHTS_DIR = BACKEND_DIR / "weights"
 
 # Ensure dirs exist
 for d in [DATA_RAW, DATA_PROCESSED, WEIGHTS_DIR]:
