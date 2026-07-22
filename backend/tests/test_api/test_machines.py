@@ -11,6 +11,22 @@ class TestListMachines:
             assert m["num_windows"] > 0
             # Denormalized cpu_usage should be back in the 0-100 range.
             assert 0 <= (m["latest_cpu"] or 0) <= 100
+            # Derived fields should be populated from cpu_usage.
+            assert m["latest_temperature"] is not None
+            assert m["latest_power"] is not None
+            assert m["latest_jobs"] is not None
+            assert m["status"] in {"high", "medium", "normal", "low"}
+
+
+class TestWorkloadDistribution:
+    def test_categories_sum_to_100(self, client):
+        r = client.get("/machines/workload")
+        assert r.status_code == 200
+        body = r.json()
+        assert "avg_cluster_cpu" in body
+        assert len(body["categories"]) == 4
+        total = sum(c["percent"] for c in body["categories"])
+        assert abs(total - 100.0) < 0.5
 
 
 class TestHistory:
@@ -24,6 +40,11 @@ class TestHistory:
         assert len(body["steps"]) == 10
         first = body["steps"][0]
         assert "cpu_usage" in first["values"]
+        # Derived fields should be present when denormalized.
+        assert "temperature" in first["values"]
+        assert "power_draw" in first["values"]
+        assert "jobs_count" in first["values"]
+        assert "temperature" in body["columns"]
 
     def test_missing_machine_returns_404(self, client):
         r = client.get("/machines/no_such_machine/history")

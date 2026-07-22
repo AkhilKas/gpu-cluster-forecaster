@@ -4,6 +4,8 @@ from .machines import (
     HistoryPoint,
     HistoryResponse,
     MachineInfo,
+    WorkloadCategory,
+    WorkloadDistribution,
 )
 from .models import ModelCompareRow, ModelInfo, ModelMetrics
 from .predict import (
@@ -26,4 +28,6 @@ __all__ = [
     "ModelMetrics",
     "PredictRequest",
     "PredictResponse",
+    "WorkloadCategory",
+    "WorkloadDistribution",
 ]
