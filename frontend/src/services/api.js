@@ -22,12 +22,16 @@ export class ApiError extends Error {
 
 async function request(path, options = {}) {
   const url = `${BASE_URL}${path}`;
+  const headers = { ...(options.headers || {}) };
+  // Only send Content-Type when we actually have a body. Adding it to GETs
+  // makes them "non-simple" CORS requests and triggers a preflight even for
+  // same-origin — which is what happens on Render deploys.
+  if (options.body != null && !("Content-Type" in headers)) {
+    headers["Content-Type"] = "application/json";
+  }
   let response;
   try {
-    response = await fetch(url, {
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-      ...options,
-    });
+    response = await fetch(url, { ...options, headers });
   } catch (e) {
     throw new ApiError(`Network error: ${e.message}`, 0, url);
   }
