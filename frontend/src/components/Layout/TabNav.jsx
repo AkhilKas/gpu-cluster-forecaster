@@ -1,10 +1,11 @@
-import { Activity, Cpu, Server, TrendingUp } from "lucide-react";
+import { Activity, Cpu, Server, TrendingUp, Upload } from "lucide-react";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "forecast", label: "Forecast", icon: TrendingUp },
   { id: "cluster", label: "Cluster Map", icon: Server },
   { id: "model", label: "Model Performance", icon: Cpu },
+  { id: "upload", label: "Your Cluster", icon: Upload },
 ];
 
 function TabButton({ tab, active, onClick, Icon }) {

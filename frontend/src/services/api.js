@@ -26,7 +26,9 @@ async function request(path, options = {}) {
   // Only send Content-Type when we actually have a body. Adding it to GETs
   // makes them "non-simple" CORS requests and triggers a preflight even for
   // same-origin — which is what happens on Render deploys.
-  if (options.body != null && !("Content-Type" in headers)) {
+  // Skip for FormData — the browser sets it with the multipart boundary.
+  const isFormData = options.body instanceof FormData;
+  if (options.body != null && !isFormData && !("Content-Type" in headers)) {
     headers["Content-Type"] = "application/json";
   }
   let response;
@@ -72,4 +74,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ window, model }),
     }),
+  uploadCsv: (file, model = null) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (model) form.append("model", model);
+    return request("/predict/upload", { method: "POST", body: form });
+  },
 };

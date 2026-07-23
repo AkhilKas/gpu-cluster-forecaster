@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from .machines import HistoryPoint
+
 
 class PredictRequest(BaseModel):
     window: list[list[float]] = Field(
@@ -33,3 +35,19 @@ class BatchPredictResponse(BaseModel):
     horizon: int
     target_columns: list[str]
     forecasts: list[list[list[float]]]
+
+
+class UploadedMachine(BaseModel):
+    machine_id: str
+    num_input_rows: int
+    history: list[HistoryPoint] = []
+    forecast: list[HistoryPoint] = []
+    warnings: list[str] = []
+
+
+class UploadPredictResponse(BaseModel):
+    model: str
+    num_machines: int
+    target_columns: list[str]
+    machines: list[UploadedMachine]
+    warnings: list[str] = []
