@@ -13,6 +13,8 @@ from .predict import (
     BatchPredictResponse,
     PredictRequest,
     PredictResponse,
+    UploadedMachine,
+    UploadPredictResponse,
 )
 
 __all__ = [
@@ -28,6 +30,8 @@ __all__ = [
     "ModelMetrics",
     "PredictRequest",
     "PredictResponse",
+    "UploadPredictResponse",
+    "UploadedMachine",
     "WorkloadCategory",
     "WorkloadDistribution",
 ]

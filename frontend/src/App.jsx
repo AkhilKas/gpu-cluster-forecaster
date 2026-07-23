@@ -7,6 +7,7 @@ import OverviewTab from "./components/Dashboard/OverviewTab.jsx";
 import ForecastTab from "./components/Dashboard/ForecastTab.jsx";
 import ClusterTab from "./components/Dashboard/ClusterTab.jsx";
 import ModelTab from "./components/Dashboard/ModelTab.jsx";
+import UploadTab from "./components/Dashboard/UploadTab.jsx";
 import {
   useForecast,
   useHealth,
@@ -138,6 +139,7 @@ export default function App() {
             comparison={modelComparison.data}
           />
         )}
+        {tab === "upload" && <UploadTab />}
         <Footer />
       </div>
     </div>

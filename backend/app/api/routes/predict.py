@@ -1,5 +1,8 @@
+import io
+
 import numpy as np
-from fastapi import APIRouter, Depends, HTTPException
+import pandas as pd
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.api.deps import get_predictor, get_registry
 from app.api.schemas import (
@@ -7,10 +10,13 @@ from app.api.schemas import (
     BatchPredictResponse,
     PredictRequest,
     PredictResponse,
+    UploadPredictResponse,
 )
-from app.inference import ModelRegistry, Predictor
+from app.inference import ModelRegistry, Predictor, UploadPredictService
 
 router = APIRouter(prefix="/predict", tags=["predict"])
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 def _resolved_name(registry: ModelRegistry, requested: str | None) -> str:
@@ -68,3 +74,39 @@ async def predict_batch(
         target_columns=predictor.config.target_columns,
         forecasts=forecasts.tolist(),
     )
+
+
+@router.post("/upload", response_model=UploadPredictResponse)
+async def predict_upload(
+    file: UploadFile = File(...),
+    model: str | None = Form(None),
+    registry: ModelRegistry = Depends(get_registry),
+    predictor: Predictor = Depends(get_predictor),
+) -> UploadPredictResponse:
+    """
+    Upload a CSV of GPU telemetry and get per-machine forecasts.
+
+    Required columns: cpu_usage, memory_usage.
+    Optional: machine_id, assigned_memory, cycles_per_instruction.
+    Each machine needs at least `sequence_length` (default 60) rows.
+    """
+    filename = (file.filename or "").lower()
+    if not filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File must have a .csv extension.")
+
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(contents)} bytes; max {MAX_UPLOAD_BYTES}).",
+        )
+    if not contents:
+        raise HTTPException(status_code=400, detail="File is empty.")
+
+    try:
+        df = pd.read_csv(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not parse CSV: {e}") from e
+
+    service = UploadPredictService(predictor, registry, predictor.config)
+    return service.process(df, model_name=model)

@@ -11,6 +11,7 @@ Given the last five hours of per-machine telemetry (60 five-minute intervals), t
 - Multi-horizon forecasts (5 min out through 60 min)
 - A cluster-wide heatmap for at-a-glance load spotting
 - Model performance metrics (MAE, RMSE, MAPE, overload-detection accuracy, training curves)
+- **Bring-your-own-data**: upload a CSV of your own GPU telemetry from the "Your Cluster" tab and get per-machine forecasts back — the server fits a fresh scaler on your rows and runs the trained LSTM against them
 
 The current v0 uses the public **Google Cluster Data 2019** dataset. CPU utilization stands in for GPU utilization since the public dataset doesn't include GPU-specific traces — the pipeline is architected so real GPU telemetry can drop in later without changes to the model or API contract.
 
@@ -169,6 +170,7 @@ Once `make serve` is running:
 | GET    | `/machines/{id}/forecast`           | Latest window → forecast, denormalized               |
 | POST   | `/predict`                          | `{window, model?}` → forecast                        |
 | POST   | `/predict/batch`                    | `{windows[], model?}` → forecasts                    |
+| POST   | `/predict/upload`                   | Multipart CSV upload → per-machine forecasts         |
 
 ## Deploying to Render
 
